@@ -1,0 +1,155 @@
+@page "/RProducto"
+@page "/RProducto/{ProductoId:int}"
+
+@using BLL
+@using Models
+@inject IToastService Toast
+
+<EditForm Model="productos" OnValidSubmit="Guardar">
+    <DataAnnotationsValidator />
+    <div class="card">
+        <div class="card-header">
+            <h3>Registro de Productos</h3>
+        </div>
+        <div class="card-body">
+            <form>
+                @*++++++++++++++++++ ProductoId ++++++++++++++++++*@
+                <div class="form-row">
+                    <div class="form-group col-3">
+                        <label>Producto Id</label>
+                        <div class="input-group">
+                            <InputNumber @bind-Value="productos.ProductoId" class="form-control" min="0" />
+                            @*++++++++++++++++++ BUSCAR ++++++++++++++++++*@
+                            <button type="button" class="btn btn-primary" @onclick="Buscar"><i class="oi oi-magnifying-glass" /> Buscar</button>
+                        </div>
+                    </div>
+                </div>
+
+
+                @*++++++++++++++++++ Descripcion ++++++++++++++++++*@
+                <div class="mb-3">
+                    <label>Descripcion</label>
+                    <InputText @bind-Value="productos.Concepto" class="form-control" placeholder="Descripcion" />
+                    <ValidationMessage For="@(() => productos.Concepto)" />
+                </div>
+
+                @*++++++++++++++++++ Existencia ++++++++++++++++++*@
+                <div class="mb-3">
+                    <label>Existencia</label>
+                    <input type="number" @bind-value="productos.Existencia" @bind-value:event="oninput" class="form-control" placeholder="Existencia" maxlength="16" />
+                    <ValidationMessage For="@(() => productos.Existencia)" />
+                    @*+++++++++ InputChanged - Monto +++++++++*@
+                    @if (productos.Existencia != 0)
+                    {
+                        ActualizarInventario();
+                    }
+                </div>
+
+                @*++++++++++++++++++ Costo ++++++++++++++++++*@
+                <div class="mb-3">
+                    <label>Costo</label>
+                    <input type="number" @bind-value="productos.Costo" @bind-value:event="oninput" class="form-control" placeholder="Costo" maxlength="13" />
+                    <ValidationMessage For="@(() => productos.Costo)" />
+                    @*+++++++++ InputChanged - Monto +++++++++*@
+                    @if (productos.Costo != 0)
+                    {
+                        ActualizarInventario();
+                    }
+                </div>
+
+                @*++++++++++++++++++ ValorInventario ++++++++++++++++++*@
+                <div class="mb-3">
+                    <label>Valor Inventario</label>
+                    <InputNumber @bind-Value="productos.ValorInventario" class="form-control" readonly />
+                </div>
+            </form>
+        </div>
+
+        @*++++++++++++++++++ NUEVO / GUARDAR / ELIMINAR ++++++++++++++++++*@
+        <div class="card-footer">
+            <div class="form-group text-center" display: inline-block>
+                <button type="button" class="btn btn-lg btn-primary" @onclick="Nuevo"><i class="oi oi-file mr-2" />Nuevo</button>
+                <button type="submit" class="btn btn-lg btn-success" style="margin-inline-start: 40px;"><i class="oi oi-account-login" style="transform:rotate(90deg)" /> Guardar</button>
+                <button type="button" class="btn btn-lg btn-danger" @onclick="Eliminar" style="margin-inline-start: 40px;"><i class="oi oi-trash mr-2" />Eliminar</button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@*++++++++++++++++++ CODIGO ++++++++++++++++++*@
+@code {
+    [Parameter]
+    public int ProductoId { get; set; }
+
+    private Productos productos = new Productos();
+
+    protected override void OnInitialized()
+    {
+        if (ProductoId > 0)
+        {
+            productos = ProductosBLL.Buscar(ProductoId);
+        }
+    }
+
+    @*++++++++++++++++++ NUEVO ++++++++++++++++++*@
+    public void Nuevo()
+    {
+        productos = new Productos();
+    }
+
+    @*++++++++++++++++++ BUSCAR ++++++++++++++++++*@
+    private void Buscar()
+    {
+        var encontrado = ProductosBLL.Buscar(productos.ProductoId);
+
+        if (encontrado != null)
+        {
+            this.productos = encontrado;
+            return;
+        }
+        else
+            Nuevo();
+        Toast.ShowWarning("Esta Id no pudo ser encontrada.");
+        return;
+    }
+
+    @*++++++++++++++++++ GUARDAR ++++++++++++++++++*@
+    public void Guardar()
+    {
+        bool guardado;
+
+        guardado = ProductosBLL.Guardar(productos);
+
+        if (guardado)
+        {
+            Nuevo();
+            Toast.ShowSuccess("Registro Guardado exitosamente.");
+        }
+        else
+            Toast.ShowError("No fue posible Guardar este Registro.");
+        return;
+    }
+
+    @*++++++++++++++++++ ELIMINAR ++++++++++++++++++*@
+    public void Eliminar()
+    {
+        bool eliminado;
+
+        eliminado = ProductosBLL.Eliminar(productos.ProductoId);
+
+        if (eliminado)
+        {
+            Nuevo();
+            Toast.ShowSuccess("Registro Eliminado exitosamente.");
+        }
+        else
+            Toast.ShowError("No fue posible Eliminar este Registro.");
+        return;
+    }
+
+    //++++++++++++++++++ ValorInventario ++++++++++++++++++
+    public void ActualizarInventario()
+    {
+        productos.ValorInventario = (Convert.ToDecimal(productos.Existencia) * productos.Costo);
+    }
+}

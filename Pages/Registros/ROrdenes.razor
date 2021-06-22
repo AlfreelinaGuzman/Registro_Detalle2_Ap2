@@ -1,0 +1,268 @@
+@page "/ordenes"
+
+@using BLL
+@using Models
+@inject IToastService Toast
+
+<EditForm Model="ordenes" OnValidSubmit="Guardar">
+    <DataAnnotationsValidator />
+    <div class="card">
+        <div class="card-header">
+            <h3>Registro de Ordenes</h3>
+        </div>
+        <div class="card-body">
+            <form>
+                @*——————————————————————————————————————————————   Mora Id   ——————————————————————————————————————————————*@
+                <div class="form-row">
+                    <div class="form-group col-3">
+                        <label><b>OrdenId</b></label>
+                        <div class="input-group">
+                            <InputNumber @bind-Value="ordenes.OrdenID" class="form-control" min="0" placeholder="Id" />
+                            @*——————————————————————————————————————————————   BUSCAR   ——————————————————————————————————————————————*@
+                            <button type="button" class="btn btn-primary" @onclick="Buscar"><i class="oi oi-magnifying-glass" /> Buscar</button>
+                        </div>
+                    </div>
+                </div>
+
+                @*——————————————————————————————————————————————   Fecha   ——————————————————————————————————————————————*@
+                <div class="mb-3">
+                    <label><b>Fecha </b></label>
+                    <InputDate @bind-Value="ordenes.Fecha" class="form-control" />
+                    <ValidationMessage For="@(() => ordenes.Fecha)" />
+                </div>
+
+                @*——————————————————————————————————————————————   Select de Suplidores   ——————————————————————————————————————————————*@
+                <div class="card-body border">
+                    <div class="form-group mr-lg-5" style="float:left;">
+                        <label>Suplidor</label>
+                        <select @bind="ProductoSeleccionado" class="form-control">
+                            <option value="0" disabled selected>Seleccione un Suplidor...</option>
+                            @foreach (var item in ListaSuplidores)
+                            {
+                               @((Suplidores) = SuplidoresBLL.Buscar(item.SuplidorID));
+                               
+                                
+                            }
+                        </select>
+                    </div>
+                </div>
+
+ @*——————————————————————————————————————————————   Select de Productos   ——————————————————————————————————————————————*@
+                <div class="card-body border">
+                    <div class="form-group mr-lg-5" style="float:left;">
+                        <label>Productos</label>
+                        <select @bind="ProductoSeleccionado" class="form-control">
+                            <option value="0" disabled selected>Seleccione un producto...</option>
+                            @foreach (var item in ListaProductos)
+                            {
+                              @((productos) = ProductosBLL.Buscar(item.ProductoId));
+                                
+                            }
+                        </select>
+                    </div>
+
+
+                    @*——————————————————————————————————————————————   Cantidad   ——————————————————————————————————————————————*@
+                    <div class="form-group" style="float:left;">
+                        <label>Cantidad</label>
+                        <div class="input-group">
+                            <InputNumber @bind-Value="ordenesDetalle.Cantidad" class="form-control" />
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-warning" @onclick="AgregarFila"><i class="oi oi-plus mr-2" />Agregar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    @*——————————————————————————————————————————————   TITULOS DE LA TABLA   ——————————————————————————————————————————————*@
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>ProductoId</th>
+                                <th>Suplidor</th>
+                                <th>Cantidad</th>
+                                <th>Costo</th>
+                                <th>Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+
+                        @*——————————————————————————————————————————————   DATOS DE LA TABLA   ——————————————————————————————————————————————*@
+                        <tbody>
+                            @foreach (var ordenesDetalle in ordenes.OrdenesDetalle)
+                            {
+                                <tr>
+                                    
+                                    <td>@ordenesDetalle.ProductoId</td>
+                                    <td>@ordenesDetalle.Suplidor</td>
+                                    <td>@ordenesDetalle.Cantidad</td>
+
+                                    <td>@string.Format("{0:c}", ordenesDetalle.Costo)</td>
+
+                                    <td>@string.Format("{0:c}", ordenes.Monto)</td>
+
+                                    <td>
+                                        <button type="button" class="btn btn-danger" @onclick="()=>RemoverFila(ordenesDetalle)"><i class="oi oi-trash" /></button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <br />
+            </form>
+        </div>
+
+        @*——————————————————————————————————————————————   NUEVO / GUARDAR / ELIMINAR   ——————————————————————————————————————————————*@
+        <div class="card-footer">
+            <div class="form-group text-center" display: inline-block>
+                <button type="button" class="btn btn btn-primary" @onclick="Nuevo"><i class="oi oi-file mr-2" />Nuevo</button>
+                <button type="submit" class="btn btn btn-success" style="margin-inline-start: 40px;"><i class="oi oi-account-login" style="transform:rotate(90deg)" /> Guardar</button>
+                <button type="button" class="btn btn btn-danger" @onclick="Eliminar" style="margin-inline-start: 40px;"><i class="oi oi-trash mr-2" />Eliminar</button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@*——————————————————————————————————————————————   CODIGO   ——————————————————————————————————————————————*@
+@code {
+      [Parameter] 
+
+    public int OrdenID { get; set; }
+    public int ProductoSeleccionado { get; set; }
+    List<Suplidores> ListaSuplidores = new List<Suplidores>();
+    List<Productos> ListaProductos = new List<Productos>();
+
+    private Ordenes ordenes = new Ordenes();
+    private OrdenesDetalle ordenesDetalle = new OrdenesDetalle();
+
+    Productos productos = new Productos();
+    Suplidores prestamo = new Suplidores();
+
+    protected override void OnInitialized()
+    {
+        Nuevo();
+    }
+
+    @*——————————————————————————————————————————————   NUEVO   ——————————————————————————————————————————————*@
+    public void Nuevo()
+    {
+        ordenes = new Ordenes();
+        ListaSuplidores = SuplidoresBLL.GetList(c => true);
+        ListaProductos = ProductosBLL.GetList(c=> true);
+    }
+
+    private void Actualizar()
+    {
+        ProductoSeleccionado = 0;
+        ordenesDetalle.Cantidad = 0;
+    }
+
+    @*——————————————————————————————————————————————   BUSCAR   ——————————————————————————————————————————————*@
+    private void Buscar()
+    {
+        var encontrado = OrdenesBLL.Buscar(ordenes.OrdenID);
+
+        if (encontrado != null)
+        {
+            this.ordenes = encontrado;
+            return;
+        }
+        else
+            Nuevo();
+        Toast.ShowWarning("Error 1.1 el ID no fue encontrado.");
+        return;
+    }
+
+    @*——————————————————————————————————————————————   AGREGAR FILA   ——————————————————————————————————————————————*@
+    private void AgregarFila()
+    {
+        if (ProductoSeleccionado == 0)
+        {
+            Toast.ShowError("Error 1.1 no existe, Seleccione un suplidor nuevamente.");
+            return;
+        }
+        else
+        {
+            var _Suplidor = SuplidoresBLL.Buscar(ProductoSeleccionado);
+            var _producto = ProductosBLL.Buscar(productos.ProductoId);
+
+ 
+            ordenes.OrdenesDetalle.Add(new OrdenesDetalle
+            {
+                
+                OrdenID = ordenes.OrdenID,
+                Suplidor = _Suplidor.Nombres,
+                Cantidad = ordenesDetalle.Cantidad,
+                Costo = ordenesDetalle.Costo
+            });
+
+            _producto.ValorInventario -= ordenesDetalle.Cantidad;
+
+
+            ProductosBLL.Guardar(_producto);
+            Actualizar();
+        }
+    }
+
+
+    private void CalcularTotal()
+    {
+        decimal total = 0;
+        foreach (var item in ordenes.OrdenesDetalle)
+        {
+            total -= item.Costo;
+        }
+        ordenes.Total = total;
+    }
+
+    @*——————————————————————————————————————————————   REMOVER FILA   ——————————————————————————————————————————————*@
+private void RemoverFila(OrdenesDetalle detalle)
+{
+    try
+    {
+        var producto_ = ProductosBLL.Buscar(productos.ProductoId);
+        producto_.ValorInventario += ordenesDetalle.Cantidad;
+        ordenes.OrdenesDetalle.Remove(detalle);
+        CalcularTotal();
+    }
+    catch (Exception)
+    {
+        throw;
+    }
+}
+
+
+    @*——————————————————————————————————————————————   GUARDAR   ——————————————————————————————————————————————*@
+    public void Guardar()
+    {
+        bool guardado;
+
+        guardado = OrdenesBLL.Guardar(ordenes);
+
+        if (guardado)
+        {
+            Nuevo();
+            Toast.ShowSuccess("Registro Guardado exitosamente.");
+        }
+        else
+            Toast.ShowError("No fue posible Guardar este Registro.");
+        return;
+    }
+
+    @*——————————————————————————————————————————————   ELIMINAR   ——————————————————————————————————————————————*@
+    public void Eliminar()
+    {
+        bool eliminado;
+
+        eliminado = OrdenesBLL.Eliminar(ordenes.OrdenID);
+
+        if (eliminado)
+        {
+            Nuevo();
+            Toast.ShowSuccess("Registro Eliminado exitosamente.");
+        }
+        else
+            Toast.ShowError("No fue posible Eliminar este Registro.");
+        return;
+    }
+}
